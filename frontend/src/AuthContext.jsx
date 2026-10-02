@@ -1,58 +1,52 @@
-import { createContext, useCallback, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState } from "react"
 import { authApi } from "./api"
 
-// The JWT lives in an httpOnly cookie that JavaScript can't read, and the
-// backend has no "who am I" endpoint. So we remember the user object returned
-// by login/register in localStorage, and drop it whenever the API says 401.
+// The JWT lives in an httpOnly cookie that JavaScript can't read, so on load
+// we ask the server who is logged in. The server is the single source of truth.
 const AuthContext = createContext(null)
-const STORAGE_KEY = "ledger.user"
-
-function readStoredUser() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY))
-  } catch {
-    return null
-  }
-}
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(readStoredUser)
+  const [user, setUser] = useState(null)
+  const [checking, setChecking] = useState(true)
 
-  const saveUser = useCallback((u) => {
-    setUser(u)
-    try {
-      if (u) localStorage.setItem(STORAGE_KEY, JSON.stringify(u))
-      else localStorage.removeItem(STORAGE_KEY)
-    } catch {
-      /* storage unavailable: keep in memory only */
-    }
+  // On first load: is there a valid session cookie?
+  useEffect(() => {
+    authApi.me()
+      .then((data) => setUser(data.user))
+      .catch(() => setUser(null))
+      .finally(() => setChecking(false))
   }, [])
 
+  // Any API call that gets a 401 (expired token, logged out elsewhere) logs us out here too
   useEffect(() => {
-    const onExpired = () => saveUser(null)
+    const onExpired = () => setUser(null)
     window.addEventListener("auth:expired", onExpired)
     return () => window.removeEventListener("auth:expired", onExpired)
-  }, [saveUser])
+  }, [])
 
   const login = async (email, password) => {
     const data = await authApi.login(email, password)
-    saveUser(data.user)
+    setUser(data.user)
   }
 
   const register = async (name, email, password) => {
     const data = await authApi.register(name, email, password)
-    saveUser(data.user)
+    setUser(data.user)
   }
 
   const logout = async () => {
     try {
       await authApi.logout()
     } finally {
-      saveUser(null)
+      setUser(null)
     }
   }
 
-  return <AuthContext.Provider value={{ user, login, register, logout }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, checking, login, register, logout }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

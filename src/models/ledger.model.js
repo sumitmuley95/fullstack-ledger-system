@@ -12,7 +12,12 @@ const ledgerSchema = new mongoose.Schema({
     amount: {
         type: Number,
         required: [ true, "Amount is required for creating a ledger entry" ],
-        immutable: true
+        immutable: true,
+        min: [ 1, "Amount must be at least 1 paisa" ],
+        validate: {
+            validator: Number.isInteger,
+            message: "Amount must be a whole number of paise"
+        }
     },
     transaction: {
         type: mongoose.Schema.Types.ObjectId,

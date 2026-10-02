@@ -20,6 +20,11 @@ const accountSchema = new mongoose.Schema({
         type: String,
         required: [ true, "Currency is required for creating an account" ],
         default: "INR"
+    },
+    lockVersion: {
+        type: Number,
+        default: 0,
+        select: false // internal; used to serialise concurrent transfers (see Step 6)
     }
 }, {
     timestamps: true
@@ -65,6 +70,29 @@ accountSchema.methods.getBalance = async function (session = null) {
     }
 
     return balanceData[ 0 ].balance;
+}
+
+accountSchema.statics.getBalances = async function (accountIds) {
+    const rows = await ledgerModel.aggregate([
+        { $match: { account: { $in: accountIds } } },
+        {
+            $group: {
+                _id: "$account",
+                balance: {
+                    $sum: {
+                        $cond: [
+                            { $eq: [ "$type", "CREDIT" ] },
+                            "$amount",
+                            { $multiply: [ "$amount", -1 ] }
+                        ]
+                    }
+                }
+            }
+        }
+    ])
+
+    // Map of accountId (string) -> balance in paise
+    return new Map(rows.map((row) => [ String(row._id), row.balance ]))
 }
 
 

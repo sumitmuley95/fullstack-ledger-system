@@ -20,7 +20,7 @@ export async function api(path, { method = "GET", body } = {}) {
       body: body ? JSON.stringify(body) : undefined,
     })
   } catch {
-    throw new ApiError("Can't reach the server. Is the backend running on port 3000?", 0)
+    throw new ApiError("Can't reach the server. Please try again in a moment.", 0)
   }
 
   let data = null
@@ -45,10 +45,11 @@ export const authApi = {
   register: (name, email, password) => api("/auth/register", { method: "POST", body: { name, email, password } }),
   login: (email, password) => api("/auth/login", { method: "POST", body: { email, password } }),
   logout: () => api("/auth/logout", { method: "POST" }),
+  me: () => api("/auth/me"),
 }
 
 export const accountApi = {
-  list: () => api("/accounts"),
+  list: () => api("/accounts"), // each account includes its balance (paise)
   create: () => api("/accounts", { method: "POST" }),
   balance: (accountId) => api(`/accounts/balance/${accountId}`),
 }
@@ -63,6 +64,14 @@ export function newIdempotencyKey() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
-export function formatINR(value) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(value ?? 0)
+// The API works in integer paise (₹1 = 100 paise) to avoid floating-point errors.
+// "100.50" typed by the user -> 10050 sent to the server.
+export function toPaise(rupees) {
+  return Math.round(Number(rupees) * 100)
+}
+
+// 10050 from the server -> "₹100.50" on screen
+export function formatINR(paise) {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 })
+    .format((paise ?? 0) / 100)
 }

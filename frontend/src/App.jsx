@@ -7,14 +7,24 @@ import Dashboard from "./pages/Dashboard"
 import Transfer from "./pages/Transfer"
 import SystemFunds from "./pages/SystemFunds"
 
+// Logged-in users only. While /auth/me is loading we don't know yet, so wait.
 function Protected({ children }) {
-  const { user } = useAuth()
+  const { user, checking } = useAuth()
+  if (checking) return <div className="page muted">Loading…</div>
   return user ? children : <Navigate to="/login" replace />
 }
 
+// Logged-out users only (login / register pages)
 function GuestOnly({ children }) {
-  const { user } = useAuth()
+  const { user, checking } = useAuth()
+  if (checking) return null
   return user ? <Navigate to="/" replace /> : children
+}
+
+// System users only
+function SystemOnly({ children }) {
+  const { user } = useAuth()
+  return user?.systemUser ? children : <Navigate to="/" replace />
 }
 
 export default function App() {
@@ -25,7 +35,7 @@ export default function App() {
       <Route element={<Protected><Layout /></Protected>}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/transfer" element={<Transfer />} />
-        <Route path="/system" element={<SystemFunds />} />
+        <Route path="/system" element={<SystemOnly><SystemFunds /></SystemOnly>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

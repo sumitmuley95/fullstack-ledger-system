@@ -12,12 +12,14 @@ const userSchema = new mongoose.Schema({
     },
     name: {
         type: String,
-        required: [ true, "Name is required for creating an account" ]
+        required: [ true, "Name is required for creating an account" ],
+        trim: true,
+        maxlength: [ 60, "Name can be at most 60 characters" ]
     },
     password: {
         type: String,
         required: [ true, "Password is required for creating an account" ],
-        minlength: [ 6, "password should contain more than 6 character" ],
+        minlength: [ 6, "Password must be at least 6 characters" ],
         select: false
     },
     systemUser: {

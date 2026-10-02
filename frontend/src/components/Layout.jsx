@@ -20,7 +20,7 @@ export default function Layout() {
         <nav className="nav">
           <NavLink to="/" end>Accounts</NavLink>
           <NavLink to="/transfer">Transfer</NavLink>
-          <NavLink to="/system">System</NavLink>
+          {user.systemUser && <NavLink to="/system">System</NavLink>}
         </nav>
         <div className="user">
           <span className="user-name" title={user.email}>{user.name}</span>

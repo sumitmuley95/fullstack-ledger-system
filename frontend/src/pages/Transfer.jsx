@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
-import { accountApi, formatINR, newIdempotencyKey, transactionApi } from "../api"
+import { accountApi, formatINR, newIdempotencyKey, toPaise, transactionApi } from "../api"
 import Alert from "../components/Alert"
 import Receipt from "../components/Receipt"
 
@@ -23,10 +23,7 @@ export default function Transfer() {
         const { accounts } = await accountApi.list()
         const active = accounts.filter((a) => a.status === "ACTIVE")
         setAccounts(active)
-        const res = await Promise.allSettled(active.map((a) => accountApi.balance(a._id)))
-        const map = {}
-        res.forEach((r, i) => (map[active[i]._id] = r.status === "fulfilled" ? r.value.balance : null))
-        setBalances(map)
+        setBalances(Object.fromEntries(active.map((a) => [a._id, a.balance])))
         setForm((f) => ({ ...f, fromAccount: f.fromAccount || active[0]?._id || "" }))
       } catch (err) {
         setError(err.message)
@@ -51,7 +48,7 @@ export default function Transfer() {
       const data = await transactionApi.transfer({
         fromAccount: form.fromAccount,
         toAccount: form.toAccount.trim(),
-        amount: Number(form.amount),
+        amount: toPaise(form.amount), // rupees typed by the user -> paise for the API
         idempotencyKey,
       })
       setResult(data)

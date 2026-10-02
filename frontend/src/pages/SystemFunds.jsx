@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { formatINR, newIdempotencyKey, transactionApi } from "../api"
+import { formatINR, newIdempotencyKey, toPaise, transactionApi } from "../api"
 import Alert from "../components/Alert"
 import Receipt from "../components/Receipt"
 
@@ -7,7 +7,7 @@ export default function SystemFunds() {
   const [form, setForm] = useState({ toAccount: "", amount: "" })
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState("")
   const [result, setResult] = useState(null)
 
   const onChange = (e) => {
@@ -18,20 +18,20 @@ export default function SystemFunds() {
 
   const onSubmit = async (e) => {
     e.preventDefault()
-    setError(null)
+    setError("")
     setResult(null)
     setBusy(true)
     try {
       const data = await transactionApi.initialFunds({
         toAccount: form.toAccount.trim(),
-        amount: Number(form.amount),
+        amount: toPaise(form.amount), // rupees typed by the user -> paise for the API
         idempotencyKey,
       })
       setResult(data)
       setForm({ toAccount: "", amount: "" })
       setIdempotencyKey(newIdempotencyKey())
     } catch (err) {
-      setError(err)
+      setError(err.message)
     } finally {
       setBusy(false)
     }
@@ -48,14 +48,7 @@ export default function SystemFunds() {
 
       <div className="split">
         <form className="card form" onSubmit={onSubmit}>
-          {error?.status === 403 ? (
-            <Alert kind="info">
-              Your user isn't a system user. Only a user with <code>systemUser: true</code> (set directly in
-              MongoDB) can issue funds, and that user needs an account of its own to debit.
-            </Alert>
-          ) : (
-            <Alert>{error?.message}</Alert>
-          )}
+          <Alert>{error}</Alert>
           <label>
             Credit account ID
             <input
@@ -72,7 +65,7 @@ export default function SystemFunds() {
           <label>
             Amount (₹)
             <input name="amount" type="number" min="0.01" step="0.01" className="num amount-input" value={form.amount} onChange={onChange} required />
-            {form.amount && <span className="hint">{formatINR(Number(form.amount))} will be debited from the system account</span>}
+            {form.amount && <span className="hint">{formatINR(toPaise(form.amount))} will be debited from the system account</span>}
           </label>
           <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Issuing…" : "Issue funds"}</button>
         </form>

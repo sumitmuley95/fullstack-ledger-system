@@ -8,23 +8,17 @@ import CopyId from "../components/CopyId"
 export default function Dashboard() {
   const { user } = useAuth()
   const [accounts, setAccounts] = useState([])
-  const [balances, setBalances] = useState({})
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState("")
 
   const load = useCallback(async () => {
     setError("")
+    setLoading(true)
     try {
+      // Each account already includes its balance, computed in one query on the server
       const { accounts } = await accountApi.list()
       setAccounts(accounts)
-      // Balances are derived from the ledger on the server, one request per account
-      const results = await Promise.allSettled(accounts.map((a) => accountApi.balance(a._id)))
-      const map = {}
-      results.forEach((r, i) => {
-        map[accounts[i]._id] = r.status === "fulfilled" ? r.value.balance : null
-      })
-      setBalances(map)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -49,7 +43,7 @@ export default function Dashboard() {
     }
   }
 
-  const total = Object.values(balances).reduce((sum, b) => sum + (b ?? 0), 0)
+  const total = accounts.reduce((sum, a) => sum + a.balance, 0)
 
   return (
     <>
@@ -93,9 +87,7 @@ export default function Dashboard() {
                 <span className={`badge badge-${a.status.toLowerCase()}`}>{a.status}</span>
                 <span className="muted small">{a.currency}</span>
               </div>
-              <div className="account-balance num">
-                {balances[a._id] === null ? <span className="muted">unavailable</span> : formatINR(balances[a._id])}
-              </div>
+              <div className="account-balance num">{formatINR(a.balance)}</div>
               <CopyId id={a._id} />
               <div className="account-foot">
                 <span className="muted small">Opened {new Date(a.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
