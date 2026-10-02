@@ -8,8 +8,8 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "client": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend install && npm --prefix frontend run build"
-  },
+    "build": "npm --prefix frontend install --include=dev && npm --prefix frontend run build"
+    },
   "keywords": [],
   "author": "",
   "license": "ISC",

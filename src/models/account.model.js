@@ -24,7 +24,7 @@ const accountSchema = new mongoose.Schema({
     lockVersion: {
         type: Number,
         default: 0,
-        select: false // internal; used to serialise concurrent transfers (see Step 6)
+        select: false // bumped inside every transfer so concurrent transfers from one account conflict and retry
     }
 }, {
     timestamps: true
